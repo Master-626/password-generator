@@ -1,4 +1,3 @@
-import pytest
 from password_generator.core import generate_password, batch_generate, evaluate_password_strength
 
 

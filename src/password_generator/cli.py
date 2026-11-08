@@ -4,7 +4,7 @@ CLI interface for password-generator.
 
 import click
 from rich.console import Console
-from rich.table import Table
+from rich.text import Text
 
 from .core import generate_password, batch_generate, evaluate_password_strength
 
@@ -19,7 +19,7 @@ def main():
 
 
 @main.command()
-@click.option("--length", "-l", default=16, help="Password length")
+@click.option("--length", "-l", default=16, type=click.IntRange(min=1), help="Password length")
 @click.option("--no-upper", is_flag=True, help="Exclude uppercase letters")
 @click.option("--no-lower", is_flag=True, help="Exclude lowercase letters")
 @click.option("--no-digits", is_flag=True, help="Exclude digits")
@@ -27,16 +27,22 @@ def main():
 @click.option("--exclude-ambiguous", is_flag=True, help="Exclude ambiguous characters (Il1O0)")
 def generate(length, no_upper, no_lower, no_digits, no_symbols, exclude_ambiguous):
     """Generate a secure password."""
-    pwd = generate_password(
-        length=length,
-        use_upper=not no_upper,
-        use_lower=not no_lower,
-        use_digits=not no_digits,
-        use_symbols=not no_symbols,
-        exclude_ambiguous=exclude_ambiguous,
-    )
+    try:
+        pwd = generate_password(
+            length=length,
+            use_upper=not no_upper,
+            use_lower=not no_lower,
+            use_digits=not no_digits,
+            use_symbols=not no_symbols,
+            exclude_ambiguous=exclude_ambiguous,
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
 
-    console.print(f"\n🔐 Generated Password: [bold green]{pwd}[/bold green]\n")
+    console.print(
+        Text.assemble("\n🔐 Generated Password: ", (pwd, "bold green"), "\n"),
+        soft_wrap=True,
+    )
 
     # Show strength
     result = evaluate_password_strength(pwd)
@@ -45,8 +51,8 @@ def generate(length, no_upper, no_lower, no_digits, no_symbols, exclude_ambiguou
 
 
 @main.command()
-@click.option("--count", "-n", default=10, help="Number of passwords to generate")
-@click.option("--length", "-l", default=16, help="Password length")
+@click.option("--count", "-n", default=10, type=click.IntRange(min=0), help="Number of passwords to generate")
+@click.option("--length", "-l", default=16, type=click.IntRange(min=4), help="Password length (minimum 4)")
 def batch(count, length):
     """Generate multiple passwords at once."""
     passwords = batch_generate(count=count, length=length)
@@ -54,7 +60,10 @@ def batch(count, length):
     console.print(f"\n🔐 Generated {count} passwords:\n")
     for i, pwd in enumerate(passwords, 1):
         result = evaluate_password_strength(pwd)
-        console.print(f"  {i}. [bold green]{pwd}[/bold green] - {result['rating']}")
+        console.print(
+            Text.assemble(f"  {i}. ", (pwd, "bold green"), f" - {result['rating']}"),
+            soft_wrap=True,
+        )
 
 
 @main.command()
@@ -63,7 +72,7 @@ def check(password):
     """Check password strength."""
     result = evaluate_password_strength(password)
 
-    console.print(f"\n🔍 Password Strength Check:")
+    console.print("\n🔍 Password Strength Check:")
     console.print(f"  Rating: [bold]{result['rating']}[/bold]")
     console.print(f"  Score: {result['score']}/100")
     console.print(f"  Entropy: {result['entropy_bits']} bits")

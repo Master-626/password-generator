@@ -3,7 +3,7 @@ Core password generation and strength checking logic.
 """
 
 import math
-import random
+import secrets
 import string
 from typing import Dict, List
 
@@ -16,44 +16,46 @@ def generate_password(
     use_symbols: bool = True,
     exclude_ambiguous: bool = False,
 ) -> str:
-    """Generate a secure random password."""
-    chars = ""
+    """Generate a password using the operating system's secure random source.
+
+    Every enabled category is represented, so length must be at least the
+    number of enabled categories. Ambiguous characters are excluded from every
+    choice when requested.
+    """
+    if isinstance(length, bool) or not isinstance(length, int):
+        raise TypeError("Password length must be an integer")
+
+    pools = []
 
     if use_lower:
-        chars += string.ascii_lowercase
+        pools.append(string.ascii_lowercase)
     if use_upper:
-        chars += string.ascii_uppercase
+        pools.append(string.ascii_uppercase)
     if use_digits:
-        chars += string.digits
+        pools.append(string.digits)
     if use_symbols:
-        chars += "!@#$%^&*()_+-=[]{}|;:,.<>?"
+        pools.append("!@#$%^&*()_+-=[]{}|;:,.<>?")
 
     if exclude_ambiguous:
         ambiguous = "Il1O0"
-        chars = "".join(c for c in chars if c not in ambiguous)
+        pools = ["".join(c for c in pool if c not in ambiguous) for pool in pools]
 
-    if not chars:
+    if not pools:
         raise ValueError("At least one character type must be enabled")
 
-    # Ensure at least one from each selected category
-    password_chars = []
-    if use_lower:
-        password_chars.append(random.choice(string.ascii_lowercase))
-    if use_upper:
-        password_chars.append(random.choice(string.ascii_uppercase))
-    if use_digits:
-        password_chars.append(random.choice(string.digits))
-    if use_symbols:
-        password_chars.append(random.choice("!@#$%^&*()_+-=[]{}|;:,.<>?"))
+    if length < len(pools):
+        raise ValueError(
+            "Password length must be at least the number of enabled character types "
+            f"({len(pools)})"
+        )
 
-    # Fill the rest
-    remaining = length - len(password_chars)
-    password_chars.extend(random.choice(chars) for _ in range(remaining))
-
-    # Shuffle
-    random.shuffle(password_chars)
-
-    return "".join(password_chars[:length])
+    chars = "".join(pools)
+    # Rejection sampling keeps all passwords satisfying the category rules
+    # equally likely, without a predictable PRNG or a biased seed-and-shuffle.
+    while True:
+        password = "".join(secrets.choice(chars) for _ in range(length))
+        if all(any(c in pool for c in password) for pool in pools):
+            return password
 
 
 def batch_generate(
@@ -61,7 +63,11 @@ def batch_generate(
     length: int = 16,
     **kwargs,
 ) -> List[str]:
-    """Generate multiple passwords at once."""
+    """Generate multiple passwords; count must be a non-negative integer."""
+    if isinstance(count, bool) or not isinstance(count, int):
+        raise TypeError("Password count must be an integer")
+    if count < 0:
+        raise ValueError("Password count must be non-negative")
     return [generate_password(length=length, **kwargs) for _ in range(count)]
 
 
