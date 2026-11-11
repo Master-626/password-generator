@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "password-generator"
-version = "0.1.0"
+version = "0.1.1"
 description = "A secure password generator with strength checking and batch generation support"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -22,6 +22,9 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Security",
 ]
 dependencies = [
@@ -36,9 +39,24 @@ passgen = "password_generator.cli:main"
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
+    "ruff>=0.6.0",
 ]
 
 [project.urls]
 Homepage = "https://github.com/Master-626/password-generator"
 Repository = "https://github.com/Master-626/password-generator"
 Issue-Tracker = "https://github.com/Master-626/password-generator/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["password_generator"]

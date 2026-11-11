@@ -7,10 +7,8 @@ from unittest.mock import patch
 import pytest
 
 from password_generator import batch_generate, generate_password
+from password_generator.core import AMBIGUOUS, SYMBOLS
 
-
-SYMBOLS = "!@#$%^&*()_+-=[]{}|;:,.<>?"
-AMBIGUOUS = "Il1O0"
 CATEGORIES = (
     ("use_lower", string.ascii_lowercase),
     ("use_upper", string.ascii_uppercase),
@@ -86,7 +84,33 @@ def test_rejects_non_integer_batch_counts(count):
 
 
 def test_zero_batch_count_is_empty():
-    assert batch_generate(count=0) == []
+    with patch("secrets.choice") as choice:
+        assert batch_generate(count=0) == []
+    choice.assert_not_called()
+
+
+def test_zero_batch_count_still_validates_options():
+    with pytest.raises(ValueError, match="length"):
+        batch_generate(count=0, length=3)
+    with pytest.raises(ValueError, match="At least one character type"):
+        batch_generate(
+            count=0,
+            use_upper=False,
+            use_lower=False,
+            use_digits=False,
+            use_symbols=False,
+        )
+    with pytest.raises(TypeError, match="integer"):
+        batch_generate(count=0, length=True)
+    with pytest.raises(TypeError):
+        batch_generate(count=0, lenght=8)
+
+
+def test_count_errors_are_reported_before_generation_options():
+    with pytest.raises(ValueError, match="count"):
+        batch_generate(count=-1, length="bad")
+    with pytest.raises(TypeError, match="count"):
+        batch_generate(count=1.5, length="bad")
 
 
 def test_batch_preserves_options():
